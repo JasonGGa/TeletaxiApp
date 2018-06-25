@@ -42,8 +42,7 @@ public class DriverLoginActivity extends AppCompatActivity {
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
                 if (user != null) {
-                    Log.i(">>>", user.getEmail());
-                    Intent intent = new Intent(DriverLoginActivity.this, DriverMapActivity.class);
+                    Intent intent = new Intent(DriverLoginActivity.this, CustomerMapActivity.class);
                     startActivity(intent);
                     finish();
                 }
@@ -60,6 +59,9 @@ public class DriverLoginActivity extends AppCompatActivity {
                 }
 
                 final String passwd = etPass.getText().toString();
+                if (passwd.length() < 8) {
+                    etPass.setError("La contraseña debe contener 6 caracteres como minimo.");
+                }
 
                 fbAuth.createUserWithEmailAndPassword(email.toString(), passwd).addOnCompleteListener(DriverLoginActivity.this, new OnCompleteListener<AuthResult>() {
                     @Override
@@ -69,6 +71,7 @@ public class DriverLoginActivity extends AppCompatActivity {
                         } else {
                             String userId = fbAuth.getCurrentUser().getUid();
                             String usertype = getIntent().getExtras().getString("userType");
+
                             DatabaseReference dbReference = FirebaseDatabase.getInstance().getReference().child("User").child(usertype).child(userId);
                             dbReference.setValue(true);
                         }
