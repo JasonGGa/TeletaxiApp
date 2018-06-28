@@ -11,9 +11,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
+import com.firebase.geofire.GeoQuery;
+import com.firebase.geofire.GeoQueryEventListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationRequest;
@@ -41,6 +44,11 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     LocationRequest locationRequest;
     LatLng pickupLocation;
 
+    // Finding driver variables
+    private int radius = 1;
+    private Boolean driverFound =  false;
+    private String driverFoundId;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,7 +63,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
             @Override
             public void onClick(View view) {
                 FirebaseAuth.getInstance().signOut();
-                Intent intent = new Intent(CustomerMapActivity.this, MainActivity.class);
+                Intent intent = new Intent(CustomerMapActivity.this, DriverLoginActivity.class);
                 startActivity(intent);
                 finish();
             }
@@ -79,6 +87,51 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 pickupLocation = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
                 mMap.addMarker(new MarkerOptions().position(pickupLocation).title("Recojeme aqui"));
                 bRequest.setText("Buscando un vehiculo");
+
+                getClosestDrivers();
+            }
+        });
+    }
+
+    public void getClosestDrivers() {
+        DatabaseReference driverLocation = FirebaseDatabase.getInstance().getReference().child("driversAvailable");
+        GeoFire geoFire =  new GeoFire(driverLocation);
+
+        GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(pickupLocation.latitude, pickupLocation.longitude), radius);
+
+        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key, GeoLocation location) {
+                if (!driverFound) {
+                    driverFound = true;
+                    driverFoundId = key;
+                }
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+
+            }
+
+            @Override
+            public void onKeyMoved(String key, GeoLocation location) {
+
+            }
+
+            @Override
+            public void onGeoQueryReady() {
+                if (!driverFound) {
+                    Toast.makeText(getBaseContext(), "No se encontro drivers", Toast.LENGTH_SHORT).show();
+                    bRequest.setText("Solicitar");
+                } else {
+                    Toast.makeText(getBaseContext(), "Driver encontrado", Toast.LENGTH_SHORT).show();
+                    bRequest.setText("En camino");
+                }
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+
             }
         });
     }
