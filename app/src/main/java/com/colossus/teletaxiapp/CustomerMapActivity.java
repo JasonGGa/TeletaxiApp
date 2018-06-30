@@ -26,11 +26,17 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
+import java.util.HashMap;
+import java.util.List;
 
 public class CustomerMapActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
@@ -45,9 +51,11 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     LatLng pickupLocation;
 
     // Finding driver variables
-    private int radius = 1;
+    private int radius = 20;
     private Boolean driverFound =  false;
     private String driverFoundId;
+
+    private Marker mDriverMarker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,7 +113,18 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 if (!driverFound) {
                     driverFound = true;
                     driverFoundId = key;
-                }
+
+                    DatabaseReference driverRef =
+                            FirebaseDatabase.getInstance().getReference().child("User").child("Driver").child(driverFoundId);
+                    String customerId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+                    HashMap map = new HashMap();
+                    map.put("custumerRideId", customerId);
+                    driverRef.updateChildren(map);
+
+                    getDriverLocation();
+                    bRequest.setText("Obteniendo ubicacion de Taxi");
+
+                 }
             }
 
             @Override
@@ -125,7 +144,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     bRequest.setText("Solicitar");
                 } else {
                     Toast.makeText(getBaseContext(), "Driver encontrado", Toast.LENGTH_SHORT).show();
-                    bRequest.setText("En camino");
+                    //bRequest.setText("En camino id: " + driverFoundId);
                 }
             }
 
@@ -134,6 +153,44 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
             }
         });
+    }
+
+    private void getDriverLocation() {
+        final DatabaseReference driverRef =
+                FirebaseDatabase.getInstance().getReference().child("DriversWorking").child(driverFoundId).child("l");
+        driverRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    List<Object> map = (List<Object>) dataSnapshot.getValue();
+                    double locationLat = 0;
+                    double locationLng = 0;
+                    bRequest.setText("Taxi encontrado");
+
+                    if (map.get(0) != null) {
+                        locationLat = Double.parseDouble(map.get(0).toString());
+                    }
+
+                    if (map.get(1) != null) {
+                        locationLng = Double.parseDouble(map.get(1).toString());
+                    }
+
+                    LatLng driverLatLng = new LatLng(locationLat, locationLng);
+
+                    if (mDriverMarker != null) {
+                        mDriverMarker.remove();
+                    }
+
+                    mDriverMarker = mMap.addMarker(new MarkerOptions().position(driverLatLng).title("Tu taxi"));
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+
     }
 
 
