@@ -118,7 +118,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                             FirebaseDatabase.getInstance().getReference().child("User").child("Driver").child(driverFoundId);
                     String customerId = FirebaseAuth.getInstance().getCurrentUser().getUid();
                     HashMap map = new HashMap();
-                    map.put("custumerRideId", customerId);
+                    map.put("customerRideId", customerId);
                     driverRef.updateChildren(map);
 
                     getDriverLocation();
@@ -157,7 +157,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
     private void getDriverLocation() {
         final DatabaseReference driverRef =
-                FirebaseDatabase.getInstance().getReference().child("DriversWorking").child(driverFoundId).child("l");
+                FirebaseDatabase.getInstance().getReference().child("driversWorking").child(driverFoundId).child("l");
         driverRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {

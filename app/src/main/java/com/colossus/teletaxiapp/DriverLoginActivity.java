@@ -55,12 +55,12 @@ public class DriverLoginActivity extends AppCompatActivity {
                 final CharSequence email = etEmail.getText();
                 if (!isValidEmail(email)) {
                     Toast.makeText(DriverLoginActivity.this, "Email incorrecto", Toast.LENGTH_SHORT).show();
-                    etEmail.setError("Email invalido");
+                    etEmail.setError("Email inválido");
                 }
 
                 final String passwd = etPass.getText().toString();
-                if (passwd.length() < 8) {
-                    etPass.setError("La contraseña debe contener 6 caracteres como minimo.");
+                if (passwd.length() < 6) {
+                    etPass.setError("La contraseña debe contener 6 caracteres como mínimo.");
                 }
 
                 fbAuth.createUserWithEmailAndPassword(email.toString(), passwd).addOnCompleteListener(DriverLoginActivity.this, new OnCompleteListener<AuthResult>() {
@@ -70,9 +70,8 @@ public class DriverLoginActivity extends AppCompatActivity {
                             Toast.makeText(DriverLoginActivity.this, "No se pudo crear el usuario", Toast.LENGTH_SHORT).show();
                         } else {
                             String userId = fbAuth.getCurrentUser().getUid();
-                            String usertype = getIntent().getExtras().getString("userType");
 
-                            DatabaseReference dbReference = FirebaseDatabase.getInstance().getReference().child("User").child(usertype).child(userId);
+                            DatabaseReference dbReference = FirebaseDatabase.getInstance().getReference().child("User").child("Customer").child(userId);
                             dbReference.setValue(true);
                         }
                     }
@@ -90,6 +89,9 @@ public class DriverLoginActivity extends AppCompatActivity {
                     return;
                 }
                 final String passwd = etPass.getText().toString();
+                if (passwd.length() < 6) {
+                    etPass.setError("La contraseña debe contener 6 caracteres como mínimo.");
+                }
 
                 fbAuth.signInWithEmailAndPassword(email.toString(), passwd).addOnCompleteListener(DriverLoginActivity.this, new OnCompleteListener<AuthResult>() {
                     @Override
