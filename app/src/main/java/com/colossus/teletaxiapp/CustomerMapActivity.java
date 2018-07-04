@@ -104,13 +104,18 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
                     // set varibles to default
                     driverFound = false;
-                    radius = 1;
+                    radius = 20;
 
                     // remove Cuturmer Request
                     String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
                     DatabaseReference ref = FirebaseDatabase.getInstance().getReference("customersRequest");
                     GeoFire geoFire = new GeoFire(ref);
-                    geoFire.removeLocation(userId);
+                    geoFire.removeLocation(userId, new GeoFire.CompletionListener() {
+                        @Override
+                        public void onComplete(String key, DatabaseError error) {
+
+                        }
+                    });
 
                     // Remove Markerfrom the Map
                     if (pickupMarker != null) {
@@ -125,7 +130,13 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
                     DatabaseReference ref = FirebaseDatabase.getInstance().getReference("customersRequest");
                     GeoFire geoFire = new GeoFire(ref);
-                    geoFire.setLocation(userId, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()));
+                    geoFire.setLocation(userId, new GeoLocation(lastLocation.getLatitude(), lastLocation.getLongitude()),
+                            new GeoFire.CompletionListener() {
+                        @Override
+                        public void onComplete(String key, DatabaseError error) {
+
+                        }
+                    });
 
                     pickupLocation = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
                     pickupMarker = mMap.addMarker(new MarkerOptions().position(pickupLocation).title("Recojeme aqui"));
