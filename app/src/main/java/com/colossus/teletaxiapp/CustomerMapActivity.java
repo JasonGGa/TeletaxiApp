@@ -43,6 +43,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
     private Button bLogout;
     private Button bRequest;
+    private Button bSettings;
 
     private GoogleMap mMap;
     GoogleApiClient googleApiClient;
@@ -72,7 +73,10 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        bLogout = findViewById(R.id.logout);
+        bLogout = (Button) findViewById(R.id.logout);
+        bRequest = (Button) findViewById(R.id.request);
+        bSettings = (Button) findViewById(R.id.settings);
+
         bLogout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -83,7 +87,6 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
             }
         });
 
-        bRequest = findViewById(R.id.request);
         bRequest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -121,6 +124,9 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     if (pickupMarker != null) {
                         pickupMarker.remove();
                     }
+                    if (mDriverMarker != null) {
+                        mDriverMarker.remove();
+                    }
 
                     bRequest.setText("Llamar Taxi");
 
@@ -145,6 +151,15 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
                     getClosestDrivers();
                 }
+            }
+        });
+
+        bSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(CustomerMapActivity.this, CustomerSettingsActivity.class);
+                startActivity(intent);
+                return;
             }
         });
     }
