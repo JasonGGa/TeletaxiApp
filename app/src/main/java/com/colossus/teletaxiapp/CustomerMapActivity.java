@@ -1,5 +1,6 @@
 package com.colossus.teletaxiapp;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -45,6 +46,8 @@ import java.util.List;
 public class CustomerMapActivity extends FragmentActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
 
+    SupportMapFragment mapFragment;
+
     private Button bLogout;
     private Button bRequest;
     private Button bSettings;
@@ -74,9 +77,18 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_customer_map);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+        mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(CustomerMapActivity.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQUEST_CODE);
+        } else {
+            mapFragment.getMapAsync(this);
+        }
 
         bLogout = (Button) findViewById(R.id.logout);
         bRequest = (Button) findViewById(R.id.request);
@@ -305,8 +317,12 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(CustomerMapActivity.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQUEST_CODE);
         }
         buildGoogleApiClient();
         mMap.setMyLocationEnabled(true);
@@ -340,7 +356,8 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-            return;
+            ActivityCompat.requestPermissions(CustomerMapActivity.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_REQUEST_CODE);
         }
         LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, locationRequest, this);
         //LocationServices.getFusedLocationProviderClient(this).requestLocationUpdates(locationRequest);
@@ -354,6 +371,21 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
+    }
+
+    final int LOCATION_REQUEST_CODE = 1;
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case LOCATION_REQUEST_CODE:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    mapFragment.getMapAsync(this);
+                } else {
+                    Toast.makeText(getApplicationContext(), "Please provide the permission", Toast.LENGTH_SHORT).show();
+                }
+                break;
+        }
     }
 
     @Override
