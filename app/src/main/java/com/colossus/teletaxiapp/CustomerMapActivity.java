@@ -82,7 +82,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     private ValueEventListener driverLocationRefListener;
 
     private String destination;
-
+    private LatLng destinationLatLng;
 
     // Driver information variables
     private LinearLayout mDriverInfo;
@@ -106,6 +106,8 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         } else {
             mapFragment.getMapAsync(this);
         }
+
+        destinationLatLng =  new LatLng(0.0,0.0);
 
         mDriverInfo = (LinearLayout) findViewById(R.id.driverInfo);
         mDriverProfileImage = (ImageView) findViewById(R.id.driverProfileImage);
@@ -132,52 +134,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
             public void onClick(View view) {
 
                 if (requestBol) {
-                    requestBol = false;
-                    // Remove all listeners
-                    geoQuery.removeAllListeners();
-                    if (driverLocationRef != null) {
-                        driverLocationRef.removeEventListener(driverLocationRefListener);
-                    }
-
-                    // Remove custumer Id from Drivers
-                    if (driverFoundId != null) {
-                        DatabaseReference driverRef =
-                                FirebaseDatabase.getInstance().getReference().child("User").child("Driver")
-                                        .child(driverFoundId).child("customerRequest");
-                        driverRef.removeValue();
-                        driverFoundId = null;
-                    }
-
-                    // set varibles to default
-                    driverFound = false;
-                    radius = 20;
-
-                    // remove Cuturmer Request
-                    String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-                    DatabaseReference ref = FirebaseDatabase.getInstance().getReference("customersRequest");
-                    GeoFire geoFire = new GeoFire(ref);
-                    geoFire.removeLocation(userId, new GeoFire.CompletionListener() {
-                        @Override
-                        public void onComplete(String key, DatabaseError error) {
-
-                        }
-                    });
-
-                    // Remove Markerfrom the Map
-                    if (pickupMarker != null) {
-                        pickupMarker.remove();
-                    }
-                    if (mDriverMarker != null) {
-                        mDriverMarker.remove();
-                    }
-
-                    bRequest.setText("Llamar Taxi");
-
-                    mDriverInfo.setVisibility(View.GONE);
-                    mDriverName.setText("");
-                    mDriverPhone.setText("");
-                    mDriverCar.setText("");
-                    mDriverProfileImage.setImageResource(R.mipmap.ic_default_user);
+                    endRide();
 
                 } else {
                     requestBol = true;
@@ -220,6 +177,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 // TODO: Get info about the selected place.
                 //Log.i(TAG, "Place: " + place.getName());
                 destination = place.getName().toString();
+                destinationLatLng = place.getLatLng();
             }
 
             @Override
@@ -250,10 +208,13 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     HashMap map = new HashMap();
                     map.put("customerRideId", customerId);
                     map.put("destination", destination);
+                    map.put("destinationLat", destinationLatLng.latitude);
+                    map.put("destinationLng", destinationLatLng.longitude);
                     driverRef.updateChildren(map);
 
                     getDriverLocation();
                     getDriverInfo();
+                    getHasRideEnded();
                     bRequest.setText("Obteniendo ubicacion de Taxi");
 
                  }
@@ -365,6 +326,79 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         });
     }
 
+    private DatabaseReference driverHasEndedRef;
+    private ValueEventListener driverHasEndedRefListener;
+    private void getHasRideEnded() {
+        driverHasEndedRef = FirebaseDatabase.getInstance().getReference().child("User").child("Driver").child(driverFoundId)
+                .child("customerRequest").child("customerRideId");
+        driverHasEndedRefListener = driverHasEndedRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+
+                } else {
+                    endRide();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void endRide() {
+        requestBol = false;
+        // Remove all listeners
+        geoQuery.removeAllListeners();
+        if (driverLocationRef != null) {
+            driverLocationRef.removeEventListener(driverLocationRefListener);
+        }
+        if (driverHasEndedRef != null) {
+            driverHasEndedRef.removeEventListener(driverHasEndedRefListener);
+        }
+        // Remove custumer Id from Drivers
+        if (driverFoundId != null) {
+            DatabaseReference driverRef =
+                    FirebaseDatabase.getInstance().getReference().child("User").child("Driver")
+                            .child(driverFoundId).child("customerRequest");
+            driverRef.removeValue();
+            driverFoundId = null;
+        }
+
+        // set varibles to default
+        driverFound = false;
+        radius = 20;
+
+        // remove Cuturmer Request
+        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("customersRequest");
+        GeoFire geoFire = new GeoFire(ref);
+        geoFire.removeLocation(userId, new GeoFire.CompletionListener() {
+            @Override
+            public void onComplete(String key, DatabaseError error) {
+
+            }
+        });
+
+        // Remove Markerfrom the Map
+        if (pickupMarker != null) {
+            pickupMarker.remove();
+        }
+        if (mDriverMarker != null) {
+            mDriverMarker.remove();
+        }
+
+        bRequest.setText("Llamar Taxi");
+
+        mDriverInfo.setVisibility(View.GONE);
+        mDriverName.setText("");
+        mDriverPhone.setText("");
+        mDriverCar.setText("");
+        mDriverProfileImage.setImageResource(R.mipmap.ic_default_user);
+
+    }
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
