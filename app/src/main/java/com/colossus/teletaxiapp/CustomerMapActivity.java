@@ -268,12 +268,12 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     }
 
                     Location loc1 = new Location("");
-                    loc1.setLongitude(pickupLocation.latitude);
+                    loc1.setLatitude(pickupLocation.latitude);
                     loc1.setLongitude(pickupLocation.longitude);
 
                     Location loc2 = new Location("");
-                    loc2.setLatitude(lastLocation.getLatitude());
-                    loc2.setLongitude(lastLocation.getLongitude());
+                    loc2.setLatitude(driverLatLng.latitude);
+                    loc2.setLongitude(driverLatLng.longitude);
 
                     float distance = loc1.distanceTo(loc2);
 
