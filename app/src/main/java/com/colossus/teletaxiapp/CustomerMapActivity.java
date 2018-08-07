@@ -15,6 +15,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -48,6 +49,8 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -72,10 +75,17 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     private GoogleMap mMap;
     //*GoogleApiClient googleApiClient;
     Location lastLocation;
+    Location mLastKnownLocation;
     LocationRequest locationRequest;
     LatLng pickupLocation;
 
     private FusedLocationProviderClient mFusedLocationClient;
+    private GoogleMap.OnCameraMoveListener onCameraMoveListener;
+
+    private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
+    private static final int DEFAULT_ZOOM = 15;
+    private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
+    private boolean mLocationPermissionGranted;
 
     // Finding driver variables
     private int radius = 20;
@@ -83,6 +93,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     private String driverFoundId;
     private Boolean requestBol = false;
     private Marker pickupMarker;
+    private Marker dragablePickupMarker;
 
     // Detting driver variables
     GeoQuery geoQuery;
@@ -153,8 +164,9 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                         }
                     });
 
-                    pickupLocation = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
-                    pickupMarker = mMap.addMarker(new MarkerOptions().position(pickupLocation).title("Recojeme aqui"));
+                    //pickupLocation = new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude());
+                    pickupLocation = new LatLng(dragablePickupMarker.getPosition().latitude, dragablePickupMarker.getPosition().longitude);
+                    //pickupMarker = mMap.addMarker(new MarkerOptions().position(pickupLocation).title("Recojeme aqui"));
 
                     bRequest.setText("Buscando un vehiculo");
 
@@ -189,6 +201,16 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 //Log.i(TAG, "An error occurred: " + status);
             }
         });
+
+        onCameraMoveListener = new GoogleMap.OnCameraMoveListener() {
+            @Override
+            public void onCameraMove() {
+                if (!requestBol) {
+                    LatLng latLng = mMap.getCameraPosition().target;
+                    dragablePickupMarker.setPosition(latLng);
+                }
+            }
+        };
     }
 
     public void getClosestDrivers() {
@@ -386,9 +408,9 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         });
 
         // Remove Markerfrom the Map
-        if (pickupMarker != null) {
-            pickupMarker.remove();
-        }
+        //if (pickupMarker != null) {
+        //    pickupMarker.remove();
+        //}
         if (mDriverMarker != null) {
             mDriverMarker.remove();
         }
@@ -414,6 +436,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        mMap.setOnCameraMoveListener(onCameraMoveListener);
 
         locationRequest = new LocationRequest();
         locationRequest.setInterval(1000);
@@ -423,9 +446,10 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED) {
-                mMap.setMyLocationEnabled(true);
+                mLocationPermissionGranted = true;
                 mFusedLocationClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
                 mMap.setMyLocationEnabled(true);
+                getDeviceLocation();
             } else {
                 checkLocationPermission();
             }
@@ -469,13 +493,16 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        mLocationPermissionGranted = false;
         switch (requestCode) {
             case 1:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                             == PackageManager.PERMISSION_GRANTED) {
+                        mLocationPermissionGranted = true;
                         mFusedLocationClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
                         mMap.setMyLocationEnabled(true);
+                        getDeviceLocation();
                     }
                 } else {
                     Toast.makeText(getApplicationContext(), "Please provide the permission", Toast.LENGTH_SHORT).show();
@@ -484,6 +511,38 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         }
     }
 
+    private void getDeviceLocation() {
+        try {
+            if (mLocationPermissionGranted) {
+                Task<Location> locationResult = mFusedLocationClient.getLastLocation();
+                locationResult.addOnCompleteListener(this, new OnCompleteListener<Location>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Location> task) {
+                        if (task.isSuccessful()) {
+                            // Set the map position to the current location in th device
+                            mLastKnownLocation = task.getResult();
+                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                                    new LatLng(mLastKnownLocation.getLatitude(),
+                                            mLastKnownLocation.getLongitude()), DEFAULT_ZOOM
+                            ));
+                            dragablePickupMarker = mMap.addMarker(new MarkerOptions()
+                                    .position(new LatLng(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude()))
+                                    .title("Ahora aqui"));
+                        } else {
+                            Log.d("Moving Camera", "Current location is null");
+                            Log.e("Moving Camera", "Exception: %s", task.getException());
+                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                                    mDefaultLocation, DEFAULT_ZOOM
+                            ));
+                            mMap.getUiSettings().setMyLocationButtonEnabled(false);
+                        }
+                    }
+                });
+            }
+        } catch (SecurityException e) {
+            Log.e("Exception: %s", e.getMessage());
+        }
+    }
     @Override
     protected void onStop() {
         super.onStop();
